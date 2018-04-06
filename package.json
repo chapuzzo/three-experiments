@@ -1,0 +1,31 @@
+{
+  "name": "three-experiments",
+  "version": "0.0.1",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "poi dev",
+    "build": "poi build",
+    "deploy": "time bash -c 'npm run build && rsync -avz --delete dist/ ovh:/var/www/demos/three_experiments'"
+  },
+  "author": "chapuzzo",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chapuzzo/three-experiments.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chapuzzo/three-experiments/issues"
+  },
+  "homepage": "https://github.com/chapuzzo/three-experiments#readme",
+  "description": "",
+  "devDependencies": {
+    "dat.gui": "^0.7.1",
+    "lodash": "^4.17.5",
+    "poi": "^9.6.13",
+    "stats.js": "^0.17.0",
+    "three": "^0.91.0",
+    "three-orbitcontrols": "^2.0.0"
+  }
+}
