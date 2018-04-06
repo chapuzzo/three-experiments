@@ -260,6 +260,37 @@ function rollerCoaster() {
 gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
 
 
+window.gif = new GIF({
+  workers: 5,
+  quality: 10,
+  workerScript: 'js/gif.worker.js',
+  debug: true,
+  repeat: 0
+})
+
+gif.on('finished', function(blob) {
+  window.open(URL.createObjectURL(blob))
+})
+
+let captureControls = {
+  running: false,
+
+  start () {
+    this.running = true
+  },
+
+  stop () {
+    this.running = false
+    gif.render()
+    console.log(gif)
+  }
+}
+
+let captureFolder = gui.addFolder('capture')
+captureFolder.add(captureControls, 'start')
+captureFolder.add(captureControls, 'stop')
+
+
 // function experiments (geometry) {
 //   let originalPositions = geometry.attributes.normal.clone()
 
@@ -341,6 +372,10 @@ function render () {
   // controls.update()
 
   renderer.render(scene, camera)
+
+  if (captureControls.running)
+    gif.addFrame(renderer.domElement, {delay: delta/5, copy: true})
+
 
   // for "animated" material from render
   // renderer.render(scene, camera, wglrt)
