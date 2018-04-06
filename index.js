@@ -153,6 +153,10 @@ gui.add({geometries}, 'geometries').onChange(function(){this.remove()})
 
 
 function rollerCoaster() {
+
+  let rollerCoaster = new THREE.Group()
+  scene.add(rollerCoaster)
+
   let vertexes = new Array(10).fill().map(() => {
     return new THREE.Vector3(
       random(-1000, 1000),
@@ -170,10 +174,10 @@ function rollerCoaster() {
     linewidth: 2
   }))
 
-  objects.add(splineLine)
+  rollerCoaster.add(splineLine)
 
   let cube = cubeHelper(curve.getPointAt(0))
-  objects.add(cube)
+  rollerCoaster.add(cube)
 
   let cubePositionFolder = gui.addFolder('cube position')
   cubePositionFolder.open()
