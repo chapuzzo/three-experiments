@@ -182,12 +182,16 @@ function rollerCoaster() {
   let cube = cubeHelper(curve.getPointAt(0))
   rollerCoaster.add(cube)
 
+  // let otherCube = cubeHelper(curve.getPointAt(0))
+  // rollerCoaster.add(otherCube)
+
   let cubeMotionSettings = {
     position: 0,
     timePerLoop: 30,
     enabled: true,
     cameraTracking: true,
-    cameraLookAt: true
+    cameraLookAt: true,
+    applyMatrixTracking: true
   }
 
   let updateCubePosition = function (delta) {
@@ -200,8 +204,13 @@ function rollerCoaster() {
   let updateCameraPosition = function (delta) {
     let cubePosition = curve.getPointAt(delta).clone()
     let offset = new THREE.Vector3(-100, 150, -100)
-    let offsettedPosition = cubePosition.add(offset).applyMatrix4(cube.matrixWorld)
+    let offsettedPosition = cubePosition.add(offset)
 
+    if (cubeMotionSettings.applyMatrixTracking) {
+      offsettedPosition.applyMatrix4(cube.matrixWorld)
+    }
+
+    // otherCube.position.copy(offsettedPosition)
     camera.position.copy(offsettedPosition)
     controls.update()
   }
@@ -236,6 +245,7 @@ function rollerCoaster() {
 
   cubeMotionFolder.add(cubeMotionSettings, 'cameraTracking')
   cubeMotionFolder.add(cubeMotionSettings, 'cameraLookAt')
+  cubeMotionFolder.add(cubeMotionSettings, 'applyMatrixTracking')
 
   mixers.push(cubeMovementMixer)
 
