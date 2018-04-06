@@ -4,6 +4,7 @@ import Stats from 'stats.js'
 import dat from 'dat.gui'
 import cubeHelper from './cubeHelper'
 import createGrids from './createGrids'
+import CallbackMixer from './CallbackMixer'
 import bufferGeometryMerger from './bufferGeometryMerger'
 import {debounce, random, times} from 'lodash'
 
@@ -11,8 +12,10 @@ window.THREE = THREE
 window.gui = new dat.GUI({closeOnTop: true, hideable: false, width: 350})
 let stats = new Stats()
 document.body.appendChild(stats.dom)
+let clock = new THREE.Clock()
 
 window.scene = new THREE.Scene()
+let mixers = []
 
 window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000)
 camera.position.set(2500, 4100, 2300)
@@ -179,40 +182,69 @@ function rollerCoaster() {
   let cube = cubeHelper(curve.getPointAt(0))
   rollerCoaster.add(cube)
 
-  let cubePositionFolder = gui.addFolder('cube position')
-  cubePositionFolder.open()
-
-  let cubeSettings = {
+  let cubeMotionSettings = {
     position: 0,
-    speed: 0.0005
+    timePerLoop: 30,
+    enabled: true,
+    cameraTracking: true,
+    cameraLookAt: true
   }
 
-  cubePositionFolder.add(cubeSettings, 'position', 0, 0.9999, 0.001).onChange((value) => {
+  let updateCubePosition = function (delta) {
+    cubeMotionSettings.position = delta
+    cube.position.copy(curve.getPointAt(delta))
+    let x = curve.getPointAt((delta + 0.0001) % 1)
+    cube.lookAt(x)
+  }
+
+  let updateCameraPosition = function (delta) {
+    let cubePosition = curve.getPointAt(delta).clone()
+    let offset = new THREE.Vector3(-100, 150, -100)
+    let offsettedPosition = cubePosition.add(offset).applyMatrix4(cube.matrixWorld)
+
+    camera.position.copy(offsettedPosition)
+    controls.update()
+  }
+
+  window.cubeMovementMixer = new CallbackMixer(ratio => {
+    if (cubeMotionSettings.enabled)
+      updateCubePosition(ratio)
+
+    if (cubeMotionSettings.cameraTracking)
+      updateCameraPosition(ratio)
+
+    if (cubeMotionSettings.cameraLookAt){
+      camera.lookAt(cube.position)
+    }
+
+  }, 30, Infinity)
+
+  let cubeMotionFolder = gui.addFolder('cube motion')
+  cubeMotionFolder.open()
+
+  cubeMotionFolder.add(cubeMotionSettings, 'position', 0, 0.9999, 0.001).onChange(value => {
     updateCubePosition(value)
   }).listen()
 
-  cubePositionFolder.add(cubeSettings, 'speed', 0, 0.005, 0.0001)
+  cubeMotionFolder.add(cubeMotionSettings, 'timePerLoop', 0, 60, 0.5).onChange(value => {
+    cubeMovementMixer.setDuration(value)
+  })
 
-  let updateCubePosition = function(delta) {
-    cube.position.copy(curve.getPointAt(delta))
-    let x = curve.getPointAt(delta + 0.0001)
-    // console.log({x})
-    cube.lookAt(x)
-    let offsetedX = x.clone().add(new THREE.Vector3(100, 150, 100)).applyMatrix4(cube.matrixWorld)
-    camera.position.copy(offsetedX)
-    camera.lookAt(x)
-  }
+  cubeMotionFolder.add(cubeMotionSettings, 'enabled').onChange(() => {
+    cubeMovementMixer.pause()
+  })
 
-  let moveCube = function(){
-    window.requestAnimationFrame(moveCube)
+  cubeMotionFolder.add(cubeMotionSettings, 'cameraTracking')
+  cubeMotionFolder.add(cubeMotionSettings, 'cameraLookAt')
 
-    cubeSettings.position += cubeSettings.speed
-    cubeSettings.position %= 1
+  mixers.push(cubeMovementMixer)
 
-    updateCubePosition(cubeSettings.position)
-  }
 
-  moveCube()
+  // let controlsFolder = gui.addFolder('controls')
+  // controlsFolder.add(controls, 'minPolarAngle', 0, 2*Math.PI)
+  // controlsFolder.add(controls, 'maxPolarAngle', 0, 2*Math.PI)
+  // controlsFolder.add(controls, 'minAzimuthAngle', 0, 2*Math.PI)
+  // controlsFolder.add(controls, 'maxAzimuthAngle', 0, 2*Math.PI)
 }
 
 gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
@@ -291,10 +323,17 @@ window.addEventListener('resize', () => {
 function render () {
   stats.begin()
   requestAnimationFrame(render)
+  let delta = clock.getDelta()
+
+  mixers.forEach(mixer => mixer.update(delta))
+
+  // only needed for autoRotate or inertia
+  // controls.update()
 
   renderer.render(scene, camera)
+
+  // for "animated" material from render
   // renderer.render(scene, camera, wglrt)
-  controls.update()
 
   if (textSettings.followCamera)
     texts.children.forEach(child => {
