@@ -27,7 +27,7 @@ document.body.appendChild(renderer.domElement)
 document.body.style.margin = 0
 
 let gridsPosition = new THREE.Vector3(0, -100, 0)
-createGrids(2000, 20, gridsPosition, scene)
+// createGrids(2000, 20, gridsPosition, scene)
 
 window.controls = new OrbitControls(camera, renderer.domElement)
 controls.target.set(-200, 0, -200)
@@ -259,6 +259,69 @@ function rollerCoaster() {
 
 gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
 
+let downloadBlob = function (blob) {
+  let link = document.createElement('a')
+  link.style.display  = 'none'
+
+  let downloadUrl = window.URL.createObjectURL(blob)
+  link.target = '_blank'
+  link.href = downloadUrl
+  link.download = 'media.webm'
+  console.log(link)
+
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(downloadUrl)
+}
+
+window.captureControls = {
+  running: false,
+
+  start () {
+    let allChunks = []
+    this.running = true
+    this.canvasMediaStream = renderer.domElement.captureStream()
+    console.log(this.canvasMediaStream)
+
+    let mediaStream = new MediaStream(this.canvasMediaStream.getTracks())
+    console.log(mediaStream)
+
+    this.recorder = new MediaRecorder(mediaStream, {
+      // mimeType: 'video/webm;codecs=vp8'
+    })
+
+    this.recorder.ondataavailable = function(e) {
+      console.log('there is data!')
+      if (e.data.size > 0){
+        allChunks.push(e.data)
+        console.log(e.data)
+        console.log(allChunks)
+
+        let fullBlob = new Blob(allChunks)
+        downloadBlob(fullBlob)
+      }
+      else {
+        alert('no data was captured :(')
+      }
+    }
+
+    this.recorder.start()
+  },
+
+  addFrame () {
+    this.canvasMediaStream.requestFrame()
+  },
+
+  stop () {
+    this.running = false
+    this.recorder.stop()
+  }
+}
+
+let captureFolder = gui.addFolder('capture')
+captureFolder.add(captureControls, 'start')
+captureFolder.add(captureControls, 'stop')
 
 // function experiments (geometry) {
 //   let originalPositions = geometry.attributes.normal.clone()
