@@ -177,7 +177,11 @@ function rollerCoaster() {
     linewidth: 2
   }))
 
+  let railwayGeometry = new THREE.TubeGeometry(curve, 900, 4, 8, true)
+  let railway = new THREE.Mesh(railwayGeometry, new THREE.MeshNormalMaterial({wireframe: true}))
+
   rollerCoaster.add(splineLine)
+  rollerCoaster.add(railway)
 
   let cube = cubeHelper(curve.getPointAt(0))
   rollerCoaster.add(cube)
@@ -191,7 +195,12 @@ function rollerCoaster() {
     enabled: true,
     cameraTracking: true,
     cameraLookAt: true,
-    applyMatrixTracking: true
+    applyMatrixTracking: true,
+    cubeEmissiveColor: {
+      r:0,
+      g:0,
+      b:0
+    }
   }
 
   let updateCubePosition = function (delta) {
@@ -246,6 +255,15 @@ function rollerCoaster() {
   cubeMotionFolder.add(cubeMotionSettings, 'cameraTracking')
   cubeMotionFolder.add(cubeMotionSettings, 'cameraLookAt')
   cubeMotionFolder.add(cubeMotionSettings, 'applyMatrixTracking')
+
+  cubeMotionFolder.add(railway, 'visible').name('view railway')
+  cubeMotionFolder.add(splineLine, 'visible').name('view railway core')
+
+  cubeMotionFolder.addColor(cubeMotionSettings, 'cubeEmissiveColor').name('cube color').onChange(function(selectedColor) {
+    cube.material.emissive = new THREE.Color(...Object.values(selectedColor).map(value => value/255))
+  })
+
+  cubeMotionFolder.add(cube.material, 'shininess', 0, 300, 5)
 
   mixers.push(cubeMovementMixer)
 
