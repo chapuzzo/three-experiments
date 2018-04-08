@@ -5,7 +5,7 @@ function cubeHelper (position, side = 20, color) {
   let cubeMaterial = new THREE.MeshPhongMaterial({
     color: color || Math.floor(0xffffff * Math.random()),
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.9,
     wireframe: true
   })
 
