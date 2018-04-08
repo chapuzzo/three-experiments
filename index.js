@@ -34,10 +34,10 @@ controls.target.set(-200, 0, -200)
 controls.enableKeys = false
 controls.autoUpdate = false
 
-let light = new THREE.HemisphereLight('white', 'black')
+let light = new THREE.HemisphereLight('white', 'black', 2)
 scene.add(light)
 
-let pointLight = new THREE.PointLight('red', 5, 10000)
+let pointLight = new THREE.PointLight('red', 50, 10000)
 pointLight.castShadow = true
 scene.add(pointLight)
 
@@ -69,8 +69,8 @@ scene.add(objects)
 
 // let wglrt = new THREE.WebGLRenderTarget(512, 512, {format: THREE.RGBFormat})
 // let sceneMaterial = new THREE.MeshBasicMaterial({map: wglrt})
-let orangeMaterial = new THREE.MeshPhongMaterial({color: 'orange'/*, opacity: 0.9, transparent: true*/})
-let greenMaterial = new THREE.MeshPhongMaterial({color: 'green'/*, opacity: 0.9, transparent: true*/})
+let orangeMaterial = new THREE.MeshStandardMaterial({color: 'orange'/*, opacity: 0.9, transparent: true*/})
+let greenMaterial = new THREE.MeshStandardMaterial({color: 'green'/*, opacity: 0.9, transparent: true*/})
 
 
 function geometries () {
@@ -154,6 +154,9 @@ function geometries () {
 
 gui.add({geometries}, 'geometries').onChange(function(){this.remove()})
 
+function randUint24 () {
+  return Math.floor(0xffffff * Math.random())
+}
 
 function rollerCoaster() {
 
@@ -178,7 +181,7 @@ function rollerCoaster() {
   }))
 
   let railwayGeometry = new THREE.TubeGeometry(curve, 900, 4, 8, true)
-  let railway = new THREE.Mesh(railwayGeometry, new THREE.MeshNormalMaterial({wireframe: true}))
+  let railway = new THREE.Mesh(railwayGeometry, new THREE.MeshPhongMaterial({color: randUint24()}))
 
   rollerCoaster.add(splineLine)
   rollerCoaster.add(railway)
@@ -189,22 +192,17 @@ function rollerCoaster() {
   // let otherCube = cubeHelper(curve.getPointAt(0))
   // rollerCoaster.add(otherCube)
 
-  let cubeMotionSettings = {
+  let rollerCoasterSettings = {
     position: 0,
     timePerLoop: 30,
     enabled: true,
     cameraTracking: true,
     applyTrackingOffset: 'matrix',
-    cameraLookAt: true,
-    cubeEmissiveColor: {
-      r:0,
-      g:0,
-      b:0
-    }
+    cameraLookAt: true
   }
 
   let updateCubePosition = function (delta) {
-    cubeMotionSettings.position = delta
+    rollerCoasterSettings.position = delta
     cube.position.copy(curve.getPointAt(delta))
     let x = curve.getPointAt((delta + 0.0001) % 1)
     cube.lookAt(x)
@@ -215,15 +213,15 @@ function rollerCoaster() {
     let offset = new THREE.Vector3(-100, 150, -100)
     let offsettedPosition = cubePosition.add(offset)
 
-    if (cubeMotionSettings.applyTrackingOffset == 'matrix') {
+    if (rollerCoasterSettings.applyTrackingOffset == 'matrix') {
       offsettedPosition.applyMatrix4(cube.matrixWorld)
     }
 
-    if (cubeMotionSettings.applyTrackingOffset == 'quaternion') {
+    if (rollerCoasterSettings.applyTrackingOffset == 'quaternion') {
       offsettedPosition.applyQuaternion(cube.getWorldQuaternion())
     }
 
-    if (cubeMotionSettings.applyTrackingOffset == 'lerp') {
+    if (rollerCoasterSettings.applyTrackingOffset == 'lerp') {
       let matrix = offsettedPosition.clone().applyMatrix4(cube.matrixWorld)
       let quaternion = offsettedPosition.clone().applyQuaternion(cube.getWorldQuaternion())
 
@@ -236,48 +234,65 @@ function rollerCoaster() {
   }
 
   window.cubeMovementMixer = new CallbackMixer(ratio => {
-    if (cubeMotionSettings.enabled)
+    if (rollerCoasterSettings.enabled)
       updateCubePosition(ratio)
 
-    if (cubeMotionSettings.cameraTracking)
+    if (rollerCoasterSettings.cameraTracking)
       updateCameraPosition(ratio)
 
-    if (cubeMotionSettings.cameraLookAt){
+    if (rollerCoasterSettings.cameraLookAt){
       camera.lookAt(cube.position)
     }
 
   }, 30, Infinity)
 
-  let cubeMotionFolder = gui.addFolder('cube motion')
-  cubeMotionFolder.open()
+  let rollerCoasterFolder = gui.addFolder('rollerCoaster')
 
-  cubeMotionFolder.add(cubeMotionSettings, 'position', 0, 0.9999, 0.001).onChange(value => {
+  let wagonFolder = rollerCoasterFolder.addFolder('wagon')
+
+  wagonFolder.addColor({color: cube.material.color.getHex()}, 'color').name('color').onChange(function(selectedColor) {
+    cube.material.color = new THREE.Color(selectedColor)
+  })
+
+  wagonFolder.addColor({color: cube.material.emissive.getHex()}, 'color').name('emissive').onChange(function(selectedColor) {
+    cube.material.emissive = new THREE.Color(selectedColor)
+  })
+
+  wagonFolder.add(cube.material, 'wireframe')
+
+  let motionFolder = wagonFolder.addFolder('motion')
+
+  motionFolder.add(rollerCoasterSettings, 'position', 0, 0.9999, 0.001).onChange(value => {
     updateCubePosition(value)
   }).listen()
 
-  cubeMotionFolder.add(cubeMotionSettings, 'timePerLoop', 0, 60, 0.5).onChange(value => {
+  motionFolder.add(rollerCoasterSettings, 'timePerLoop', 0, 60, 0.5).onChange(value => {
     cubeMovementMixer.setDuration(value)
   })
 
-  cubeMotionFolder.add(cubeMotionSettings, 'enabled').onChange(() => {
+  motionFolder.add(rollerCoasterSettings, 'enabled').onChange(() => {
     cubeMovementMixer.pause()
   })
 
-  cubeMotionFolder.add(cubeMotionSettings, 'cameraTracking')
-  cubeMotionFolder.add(cubeMotionSettings, 'cameraLookAt')
-  cubeMotionFolder.add(cubeMotionSettings, 'applyTrackingOffset', ['none', 'matrix', 'quaternion', 'lerp'])
+  let cameraFolder = rollerCoasterFolder.addFolder('camera')
 
-  cubeMotionFolder.add(railway, 'visible').name('view railway')
-  cubeMotionFolder.add(splineLine, 'visible').name('view railway core')
-
-  cubeMotionFolder.addColor(cubeMotionSettings, 'cubeEmissiveColor').name('cube color').onChange(function(selectedColor) {
-    cube.material.emissive = new THREE.Color(...Object.values(selectedColor).map(value => value/255))
+  cameraFolder.add(rollerCoasterSettings, 'cameraLookAt').onChange(() => {
+    // controls.update()
   })
 
-  cubeMotionFolder.add(cube.material, 'shininess', 0, 300, 5)
+  cameraFolder.add(rollerCoasterSettings, 'cameraTracking')
+  cameraFolder.add(rollerCoasterSettings, 'applyTrackingOffset', ['none', 'matrix', 'quaternion', 'lerp'])
+
+  let railwayFolder = rollerCoasterFolder.addFolder('railway')
+  railwayFolder.add(railway.material, 'wireframe')
+  railwayFolder.add(railway, 'visible').name('visible')
+  railwayFolder.add(splineLine, 'visible').name('visible core')
+  railwayFolder.addColor({color: railway.material.color.getHex()}, 'color').name('color').onChange(function(selectedColor) {
+    railway.material.color = new THREE.Color(selectedColor)
+  })
+
 
   mixers.push(cubeMovementMixer)
-
 
   // let controlsFolder = gui.addFolder('controls')
   // controlsFolder.add(controls, 'minPolarAngle', 0, 2*Math.PI)
