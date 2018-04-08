@@ -194,8 +194,8 @@ function rollerCoaster() {
     timePerLoop: 30,
     enabled: true,
     cameraTracking: true,
+    applyTrackingOffset: 'matrix',
     cameraLookAt: true,
-    applyMatrixTracking: true,
     cubeEmissiveColor: {
       r:0,
       g:0,
@@ -215,8 +215,19 @@ function rollerCoaster() {
     let offset = new THREE.Vector3(-100, 150, -100)
     let offsettedPosition = cubePosition.add(offset)
 
-    if (cubeMotionSettings.applyMatrixTracking) {
+    if (cubeMotionSettings.applyTrackingOffset == 'matrix') {
       offsettedPosition.applyMatrix4(cube.matrixWorld)
+    }
+
+    if (cubeMotionSettings.applyTrackingOffset == 'quaternion') {
+      offsettedPosition.applyQuaternion(cube.getWorldQuaternion())
+    }
+
+    if (cubeMotionSettings.applyTrackingOffset == 'lerp') {
+      let matrix = offsettedPosition.clone().applyMatrix4(cube.matrixWorld)
+      let quaternion = offsettedPosition.clone().applyQuaternion(cube.getWorldQuaternion())
+
+      offsettedPosition.copy(matrix.lerp(quaternion, 0.5))
     }
 
     // otherCube.position.copy(offsettedPosition)
@@ -254,7 +265,7 @@ function rollerCoaster() {
 
   cubeMotionFolder.add(cubeMotionSettings, 'cameraTracking')
   cubeMotionFolder.add(cubeMotionSettings, 'cameraLookAt')
-  cubeMotionFolder.add(cubeMotionSettings, 'applyMatrixTracking')
+  cubeMotionFolder.add(cubeMotionSettings, 'applyTrackingOffset', ['none', 'matrix', 'quaternion', 'lerp'])
 
   cubeMotionFolder.add(railway, 'visible').name('view railway')
   cubeMotionFolder.add(splineLine, 'visible').name('view railway core')
