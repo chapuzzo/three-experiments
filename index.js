@@ -30,7 +30,7 @@ let gridsPosition = new THREE.Vector3(0, -100, 0)
 createGrids(2000, 20, gridsPosition, scene)
 
 window.controls = new OrbitControls(camera, renderer.domElement)
-controls.target.set(-200, 0, -200)
+// controls.target.set(-200, 0, -200)
 controls.enableKeys = false
 controls.autoUpdate = false
 
@@ -299,6 +299,7 @@ function rollerCoaster() {
   // controlsFolder.add(controls, 'maxPolarAngle', 0, 2*Math.PI)
   // controlsFolder.add(controls, 'minAzimuthAngle', 0, 2*Math.PI)
   // controlsFolder.add(controls, 'maxAzimuthAngle', 0, 2*Math.PI)
+  return cube
 }
 
 gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
@@ -404,3 +405,66 @@ document.addEventListener('DOMContentLoaded', () => {
   textArea.focus()
 })
 
+function audio () {
+  let cube = rollerCoaster()
+
+  let audioFolder = gui.addFolder('audio')
+
+  let listener = new THREE.AudioListener()
+
+  // let oscillatorX = listener.context.createOscillator()
+  // oscillatorX.type = 'sine'
+  // oscillatorX.frequency.value = 440
+  // oscillatorX.start(0)
+  // window.soundX = new THREE.PositionalAudio(listener)
+  // soundX.setNodeSource(oscillatorX)
+  // soundX.setVolume(0.7)
+  // soundX.setRefDistance(900)
+  // cube.add(soundX)
+
+  // let oscillatorY = listener.context.createOscillator()
+  // oscillatorY.type = 'sine'
+  // oscillatorY.frequency.value = 440
+  // oscillatorY.start(0)
+  // window.soundY = new THREE.PositionalAudio(listener)
+  // soundY.setNodeSource(oscillatorY)
+  // soundY.setVolume(0.7)
+  // soundY.setRefDistance(900)
+  // cube.add(soundY)
+
+  let sphere = new THREE.Mesh(new THREE.SphereGeometry(50, 16, 16), orangeMaterial.clone())
+  sphere.add(listener)
+  scene.add(sphere)
+
+  let audioLoader = new THREE.AudioLoader()
+  let sound = new THREE.PositionalAudio(listener)
+  audioLoader.load('assets/sounds/Greg_Atkinson_-_04_-_Time_Flows_instrumental.mp3', function(buffer){
+    sound.setBuffer(buffer)
+    sound.setLoop(true)
+    sound.setVolume(0.8)
+    sound.setRefDistance(900)
+    sound.play()
+    cube.add(sound)
+  })
+
+  function discretizeFrequency (value) {
+    let base = 440
+    let semitones = 10
+    let semitone = base/semitones
+
+    return Math.ceil(value/semitone) * semitone
+  }
+
+  let audioSettings = {
+    refDistance: sound.getRefDistance()
+  }
+
+  audioFolder.add(listener.gain.gain, 'value', 0, 3)
+  audioFolder.open()
+
+  audioFolder.add(audioSettings, 'refDistance', 1, 5000).onChange(function(value){
+    sound.setRefDistance(value)
+  })
+}
+
+gui.add({audio}, 'audio').onChange(function(){this.remove()})
