@@ -6,7 +6,7 @@ import cubeHelper from './cubeHelper'
 import createGrids from './createGrids'
 import CallbackMixer from './CallbackMixer'
 import bufferGeometryMerger from './bufferGeometryMerger'
-import {debounce, random, times} from 'lodash'
+import {debounce, random, times, remove} from 'lodash'
 
 window.THREE = THREE
 window.gui = new dat.GUI({closeOnTop: true, hideable: false, width: 350})
@@ -17,7 +17,7 @@ let clock = new THREE.Clock()
 window.scene = new THREE.Scene()
 let mixers = []
 
-window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000)
+window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000)
 camera.position.set(2500, 4100, 2300)
 
 window.renderer = new THREE.WebGLRenderer({antialias: true})
@@ -129,20 +129,20 @@ function geometries () {
 
     parent.add(mergedMesh)
   }
-
-  function clearChildren (group) {
-    group.children.forEach(child => {
-      if (child.geometry)
-        child.geometry.dispose()
-
-      child.parent = null
-    })
-
-    group.children.length = 0
-  }
 }
 
 gui.add({geometries}, 'geometries').onChange(function(){this.remove()})
+
+function clearChildren (group) {
+  group.children.forEach(child => {
+    if (child.geometry)
+      child.geometry.dispose()
+
+    child.parent = null
+  })
+
+  group.children.length = 0
+}
 
 function randUint24 () {
   return Math.floor(0xffffff * Math.random())
@@ -314,6 +314,123 @@ gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
 // }
 
 // gui.add({experiments}, 'experiments')
+
+let LinearAccelerationMixer = function(object, acceleration) {
+  return {
+    update (delta) {
+      let speedDelta = acceleration.clone().multiplyScalar(delta)
+      object.userData.speed.add(speedDelta)
+    }
+  }
+}
+
+let SpeedMixer = function(object, speed) {
+  return {
+    update (delta) {
+      let positionDelta = speed.clone().multiplyScalar(delta)
+      object.position.add(positionDelta)
+    }
+  }
+}
+
+function kinematics () {
+
+  function generateCube(tracked) {
+    let cube = cubeHelper({x:0, y:0, z:0})
+    scene.add(cube)
+
+    cube.userData.speed = new THREE.Vector3(
+      random(-10, 10),
+      random(0, 10),
+      random(-10, 10)
+    )
+
+    cube.userData.acceleration = new THREE.Vector3(
+      random(-100, 100),
+      random(0, 100),
+      random(-100, 100)
+    )
+
+    cube.userData.speedMixer = new SpeedMixer(cube, cube.userData.speed)
+    cube.userData.accelerationMixer = new LinearAccelerationMixer(cube, cube.userData.acceleration)
+
+    mixers.push(cube.userData.accelerationMixer)
+    mixers.push(cube.userData.speedMixer)
+
+    if (tracked) {
+      let cubeFolder = cubesFolder.addFolder(`cube ${cube.id}`)
+
+      let cubePositionFolder = cubeFolder.addFolder('position')
+      cubePositionFolder.add(cube.position, 'x').listen()
+      cubePositionFolder.add(cube.position, 'y').listen()
+      cubePositionFolder.add(cube.position, 'z').listen()
+
+      let cubeSpeedFolder = cubeFolder.addFolder('speed')
+      cubeSpeedFolder.add(cube.userData.speed, 'x').listen()
+      cubeSpeedFolder.add(cube.userData.speed, 'y').listen()
+      cubeSpeedFolder.add(cube.userData.speed, 'z').listen()
+      cubeSpeedFolder.add({reflect(){
+        cube.userData.speed.reflect(cube.position.clone().normalize())
+      }}, 'reflect')
+
+      let cubeAccelerationFolder = cubeFolder.addFolder('acceleration')
+      cubeAccelerationFolder.add(cube.userData.acceleration, 'x').listen()
+      cubeAccelerationFolder.add(cube.userData.acceleration, 'y').listen()
+      cubeAccelerationFolder.add(cube.userData.acceleration, 'z').listen()
+      cubeAccelerationFolder.add({reflect(){
+        cube.userData.acceleration.reflect(cube.position.clone().normalize())
+      }}, 'reflect')
+
+      cube.userData.guiFolder = cubeFolder
+    }
+
+    return cube
+  }
+
+  let cubes = new THREE.Group()
+  scene.add(cubes)
+
+  let kinematicsFolder = gui.addFolder('kinematics')
+
+  let kinematicsSettings = {
+    amount: 50,
+    tracked: false,
+    addCube(){
+      cubes.add(generateCube(this.tracked))
+    },
+    addCubes() {
+      times(this.amount, () => {
+        cubes.add(generateCube(this.tracked))
+      })
+    },
+    clearCubes() {
+      cubes.children.forEach(cube => {
+        if (cube.userData.guiFolder)
+          cubesFolder.removeFolder(cube.userData.guiFolder)
+
+        remove(mixers, cube.userData.speedMixer)
+        remove(mixers, cube.userData.accelerationMixer)
+      })
+      clearChildren(cubes)
+    }
+  }
+  kinematicsFolder.add(kinematicsSettings, 'addCube')
+  kinematicsFolder.add(kinematicsSettings, 'amount', 5, 200, 5)
+  kinematicsFolder.add(kinematicsSettings, 'addCubes')
+  kinematicsFolder.add(kinematicsSettings, 'clearCubes')
+  kinematicsFolder.add(kinematicsSettings, 'tracked')
+
+  kinematicsFolder.add({reflect(){
+    cubes.children.forEach(cube => {
+      cube.userData.speed.reflect(cube.position.clone().normalize())
+      cube.userData.acceleration.reflect(cube.position.clone().normalize())
+    })
+  }}, 'reflect')
+
+  let cubesFolder = kinematicsFolder.addFolder('cubes')
+}
+
+gui.add({kinematics}, 'kinematics').onChange(function(){this.remove()})
 
 function texts(){
   let textArea = document.createElement('textarea')
