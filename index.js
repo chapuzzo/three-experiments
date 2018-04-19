@@ -27,7 +27,8 @@ document.body.appendChild(renderer.domElement)
 document.body.style.margin = 0
 
 let gridsPosition = new THREE.Vector3(0, -100, 0)
-createGrids(2000, 20, gridsPosition, scene)
+let grids = createGrids(2000, 20, gridsPosition)
+scene.add(grids)
 
 window.controls = new OrbitControls(camera, renderer.domElement)
 controls.target.set(-200, 0, -200)
@@ -43,6 +44,14 @@ scene.add(pointLight)
 
 // let lightHelper = new THREE.PointLightHelper(pointLight)
 // scene.add(lightHelper)
+
+let gridsFolder = gui.addFolder('grids')
+gridsFolder.add(grids, 'visible')
+
+let gridsRotationFolder = gridsFolder.addFolder('rotation')
+gridsRotationFolder.add(grids.rotation, 'x', 0, 2*Math.PI, 0.1)
+gridsRotationFolder.add(grids.rotation, 'y', 0, 2*Math.PI, 0.1)
+gridsRotationFolder.add(grids.rotation, 'z', 0, 2*Math.PI, 0.1)
 
 let textArea = document.querySelector('textarea')
 
