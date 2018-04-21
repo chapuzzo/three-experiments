@@ -329,6 +329,10 @@ let SpeedMixer = function(object, speed) {
   return {
     update (delta) {
       let positionDelta = speed.clone().multiplyScalar(delta)
+
+      if (object.userData.rotation)
+        positionDelta.applyAxisAngle({x:0, y:1, z:0}, object.userData.rotation)
+
       object.position.add(positionDelta)
     }
   }
@@ -447,38 +451,79 @@ function wasd () {
 
   scene.add(cube)
   let speed = 300
+  let rotationDelta = 0.05
   let parameter = 'speed'
 
   const recognizedKeys = {
     w: {
       axis: 'x',
       direction: 1,
-      opposite: 's'
+      opposite: 's',
+      movement: true
     },
     s: {
       axis: 'x',
       direction: -1,
-      opposite: 'w'
+      opposite: 'w',
+      movement: true
     },
     a: {
       axis: 'z',
       direction: -1,
-      opposite: 'd'
+      opposite: 'd',
+      movement: true
     },
     d: {
       axis: 'z',
       direction: 1,
-      opposite: 'a'
+      opposite: 'a',
+      movement: true
+    },
+    e: {
+      axis: 'y',
+      direction: -1,
+      opposite: 'q',
+      rotation: true
+    },
+    q: {
+      axis: 'y',
+      direction: 1,
+      opposite: 'e',
+      rotation: true
     }
   }
 
   let pressedKeys = {}
 
+  function applyRotation (){
+    Object.keys(pressedKeys).forEach(keyName => {
+      let key = recognizedKeys[keyName]
+      if (!key.rotation)
+        return
+
+      let twoInSameAxis = pressedKeys[keyName] && pressedKeys[key.opposite]
+      let noneInAxis = !(pressedKeys[keyName] || pressedKeys[key.opposite])
+
+      if (twoInSameAxis || noneInAxis) {
+        return
+      }
+
+      if (pressedKeys[keyName]){
+        cube.rotation[key.axis] += rotationDelta * key.direction
+        cube.userData.rotation = cube.rotation[key.axis]
+      }
+    })
+  }
+
   function applySpeeds (){
-    let movingAxis = Object.values(pressedKeys).filter(value => value === true).length
+    let movingAxis = Object.keys(pressedKeys).filter(keyName => {
+      return recognizedKeys[keyName].movement && pressedKeys[keyName] === true
+    }).length
 
     Object.keys(pressedKeys).forEach(keyName => {
       let key = recognizedKeys[keyName]
+      if (!key.movement)
+        return
 
       let twoInSameAxis = pressedKeys[keyName] && pressedKeys[key.opposite]
       let noneInAxis = !(pressedKeys[keyName] || pressedKeys[key.opposite])
@@ -488,7 +533,7 @@ function wasd () {
         return
       }
 
-      if (pressedKeys[keyName] && !pressedKeys[key.opposite]){
+      if (pressedKeys[keyName]){
         cube.userData[parameter][key.axis] = (speed/movingAxis) * key.direction
       }
     })
@@ -502,6 +547,7 @@ function wasd () {
     if (recognizedKeys[key]) {
       pressedKeys[key] = true
       applySpeeds()
+      applyRotation()
     }
   }
 
@@ -510,6 +556,7 @@ function wasd () {
     if (recognizedKeys[key]){
       pressedKeys[key] = false
       applySpeeds()
+      applyRotation()
     }
   }
 
