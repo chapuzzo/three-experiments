@@ -18,7 +18,7 @@ window.scene = new THREE.Scene()
 let mixers = []
 
 window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000)
-camera.position.set(2500, 4100, 2300)
+camera.position.set(-2000, 2100, 0)
 
 window.renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -26,14 +26,15 @@ renderer.shadowMap.enabled = true
 document.body.appendChild(renderer.domElement)
 document.body.style.margin = 0
 
-let gridsPosition = new THREE.Vector3(0, -100, 0)
+let gridsPosition = new THREE.Vector3(0, -25, 0)
 let grids = createGrids(2000, 20, gridsPosition)
 scene.add(grids)
 
 window.controls = new OrbitControls(camera, renderer.domElement)
-controls.target.set(-200, 0, -200)
+controls.target.set(200, 0, 0)
 controls.enableKeys = false
 controls.autoUpdate = false
+controls.update()
 
 let light = new THREE.HemisphereLight('white', 'black', 2)
 scene.add(light)
@@ -431,6 +432,97 @@ function kinematics () {
 }
 
 gui.add({kinematics}, 'kinematics').onChange(function(){this.remove()})
+
+function wasd () {
+  let cube = cubeHelper({x: 0, y:0, z:0}, 50)
+
+  cube.userData.speed = new THREE.Vector3(0, 0, 0)
+  cube.userData.acceleration = new THREE.Vector3(0, 0, 0)
+
+  cube.userData.speedMixer = new SpeedMixer(cube, cube.userData.speed)
+  cube.userData.accelerationMixer = new LinearAccelerationMixer(cube, cube.userData.acceleration)
+
+  mixers.push(cube.userData.accelerationMixer)
+  mixers.push(cube.userData.speedMixer)
+
+  scene.add(cube)
+  let speed = 300
+  let parameter = 'speed'
+
+  const recognizedKeys = {
+    w: {
+      axis: 'x',
+      direction: 1,
+      opposite: 's'
+    },
+    s: {
+      axis: 'x',
+      direction: -1,
+      opposite: 'w'
+    },
+    a: {
+      axis: 'z',
+      direction: -1,
+      opposite: 'd'
+    },
+    d: {
+      axis: 'z',
+      direction: 1,
+      opposite: 'a'
+    }
+  }
+
+  let pressedKeys = {}
+
+  function applySpeeds (){
+    let movingAxis = Object.values(pressedKeys).filter(value => value === true).length
+
+    Object.keys(pressedKeys).forEach(keyName => {
+      let key = recognizedKeys[keyName]
+
+      let twoInSameAxis = pressedKeys[keyName] && pressedKeys[key.opposite]
+      let noneInAxis = !(pressedKeys[keyName] || pressedKeys[key.opposite])
+
+      if (twoInSameAxis || noneInAxis) {
+        cube.userData[parameter][key.axis] = 0
+        return
+      }
+
+      if (pressedKeys[keyName] && !pressedKeys[key.opposite]){
+        cube.userData[parameter][key.axis] = (speed/movingAxis) * key.direction
+      }
+    })
+  }
+
+  function keydown(event){
+    if (event.target.nodeName !== 'BODY')
+      return
+
+    let key = event.key.toLowerCase()
+    if (recognizedKeys[key]) {
+      pressedKeys[key] = true
+      applySpeeds()
+    }
+  }
+
+  function keyup(event){
+    let key = event.key.toLowerCase()
+    if (recognizedKeys[key]){
+      pressedKeys[key] = false
+      applySpeeds()
+    }
+  }
+
+  document.addEventListener('keydown', keydown)
+  document.addEventListener('keyup', keyup)
+  document.body.focus()
+
+  gui.add({wasd(){
+    document.body.focus()
+  }}, 'wasd').name('recover focus')
+}
+
+gui.add({wasd}, 'wasd').onChange(function(){this.remove()})
 
 function texts(){
   let textArea = document.createElement('textarea')
