@@ -53,25 +53,6 @@ gridsRotationFolder.add(grids.rotation, 'x', 0, 2*Math.PI, 0.1)
 gridsRotationFolder.add(grids.rotation, 'y', 0, 2*Math.PI, 0.1)
 gridsRotationFolder.add(grids.rotation, 'z', 0, 2*Math.PI, 0.1)
 
-let textArea = document.querySelector('textarea')
-
-let textSettings = {
-  height: 100,
-  line: 120,
-  showBoxes: false,
-  followCamera: true
-}
-
-let textFolder = gui.addFolder('text')
-textFolder.add(textSettings, 'height', 50, 200)
-textFolder.add(textSettings, 'line', 50, 200)
-textFolder.add(textSettings, 'showBoxes')
-textFolder.add(textSettings, 'followCamera')
-
-let texts = new THREE.Group()
-texts.name = 'texts'
-scene.add(texts)
-
 window.objects = new THREE.Group()
 objects.name = 'objects'
 scene.add(objects)
@@ -334,48 +315,85 @@ gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
 
 // gui.add({experiments}, 'experiments')
 
-let fontLoader = new THREE.FontLoader()
-// fontLoader.load('./assets/fonts/Anonymous Pro_Regular.json', (font) => {
-fontLoader.load('./assets/fonts/Luis2_Medium.json', (font) => {
+function texts(){
+  let textArea = document.createElement('textarea')
+  textArea.autocomplete = 'off'
+  document.body.appendChild(textArea)
+  textArea.focus()
 
-  let debouncedKeyDown = debounce(event => {
+  let textSettings = {
+    height: 100,
+    line: 120,
+    showBoxes: false,
+    followCamera: true
+  }
 
-    texts.traverse(child => {
-      if (child.isMesh)
-        child.geometry.dispose()
-    })
-    texts.children.length = 0
+  let textFolder = gui.addFolder('text')
+  textFolder.add(textSettings, 'height', 50, 200)
+  textFolder.add(textSettings, 'line', 50, 200)
+  textFolder.add(textSettings, 'showBoxes')
+  textFolder.add(textSettings, 'followCamera')
 
-    let rows = event.target.value.split(/\n/)
+  let texts = new THREE.Group()
+  texts.name = 'texts'
+  scene.add(texts)
 
-    rows.forEach((row, i) => {
-      let textGeometry = new THREE.TextGeometry(row, {
-        font,
-        size: textSettings.height,
-        height: 5,
-        bevelEnabled: true,
-        bevelThickness: 5,
-        bevelSize: 3
+  let fontLoader = new THREE.FontLoader()
+  // fontLoader.load('./assets/fonts/Anonymous Pro_Regular.json', (font) => {
+  fontLoader.load('./assets/fonts/Luis2_Medium.json', (font) => {
+
+    let debouncedKeyDown = debounce(event => {
+
+      texts.traverse(child => {
+        if (child.isMesh)
+          child.geometry.dispose()
       })
-      textGeometry.center()
+      texts.children.length = 0
 
-      let text = new THREE.Mesh(textGeometry, orangeMaterial)
-      text.name = row
+      let rows = event.target.value.split(/\n/)
 
-      if (textSettings.showBoxes) {
-        let bb = new THREE.BoxHelper(text)
-        text.add(bb)
-      }
+      rows.forEach((row, i) => {
+        let textGeometry = new THREE.TextGeometry(row, {
+          font,
+          size: textSettings.height,
+          height: 5,
+          bevelEnabled: true,
+          bevelThickness: 5,
+          bevelSize: 3
+        })
+        textGeometry.center()
 
-      text.position.set(0, -textSettings.line * i, 0)
-      texts.add(text)
+        let text = new THREE.Mesh(textGeometry, orangeMaterial)
+        text.name = row
 
-      texts.position.set(0, (rows.length - 1) * textSettings.line / 2, 0)
-    })
-  }, 500)
+        if (textSettings.showBoxes) {
+          let bb = new THREE.BoxHelper(text)
+          text.add(bb)
+        }
 
-  textArea.addEventListener('input', debouncedKeyDown, false)
-})
+        text.position.set(0, -textSettings.line * i, 0)
+        texts.add(text)
+
+        texts.position.set(0, (rows.length - 1) * textSettings.line / 2, 0)
+      })
+    }, 500)
+
+    textArea.addEventListener('input', debouncedKeyDown, false)
+  })
+
+  let textPositionMixer = {
+    update(){
+      if (textSettings.followCamera)
+        texts.children.forEach(child => {
+          child.lookAt(camera.position)
+        })
+    }
+  }
+
+  mixers.push(textPositionMixer)
+}
+
+gui.add({texts}, 'texts').onChange(function(){this.remove()})
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
@@ -398,18 +416,7 @@ function render () {
   // for "animated" material from render
   // renderer.render(scene, camera, wglrt)
 
-  if (textSettings.followCamera)
-    texts.children.forEach(child => {
-      child.lookAt(camera.position)
-    })
-
   stats.end()
 }
 
 render()
-
-document.addEventListener('DOMContentLoaded', () => {
-  let textArea = document.querySelector('textarea')
-  textArea.focus()
-})
-
