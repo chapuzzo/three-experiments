@@ -6,7 +6,7 @@ function cubeHelper (position, side = 20, color) {
     color: color || Math.floor(0xffffff * Math.random()),
     transparent: true,
     opacity: 0.9,
-    wireframe: true
+    // wireframe: true
   })
 
   let cube = new THREE.Mesh(cubeGeometry, cubeMaterial)

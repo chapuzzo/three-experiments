@@ -17,8 +17,8 @@ let clock = new THREE.Clock()
 window.scene = new THREE.Scene()
 let mixers = []
 
-window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000)
-camera.position.set(2500, 4100, 2300)
+window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100000)
+camera.position.set(-90, 350, 1500)
 
 window.renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -26,14 +26,15 @@ renderer.shadowMap.enabled = true
 document.body.appendChild(renderer.domElement)
 document.body.style.margin = 0
 
-let gridsPosition = new THREE.Vector3(0, -100, 0)
+let gridsPosition = new THREE.Vector3(0, 0, 0)
 let grids = createGrids(2000, 20, gridsPosition)
 scene.add(grids)
 
-window.controls = new OrbitControls(camera, renderer.domElement)
-controls.target.set(-200, 0, -200)
-controls.enableKeys = false
-controls.autoUpdate = false
+// window.controls = new OrbitControls(camera, renderer.domElement)
+// controls.target.set(200, 0, 0)
+// controls.enableKeys = false
+// controls.autoUpdate = false
+// controls.update()
 
 let light = new THREE.HemisphereLight('white', 'black', 2)
 scene.add(light)
@@ -220,7 +221,7 @@ function rollerCoaster() {
 
     // otherCube.position.copy(offsettedPosition)
     camera.position.copy(offsettedPosition)
-    controls.update()
+    // controls.update()
   }
 
   window.cubeMovementMixer = new CallbackMixer(ratio => {
@@ -361,21 +362,74 @@ function texts(){
           bevelThickness: 5,
           bevelSize: 3
         })
-        textGeometry.center()
+
+        let shapes = font.generateShapes(row)
+        let vertexes = shapes.reduce((accumulated, shape) => {
+          return accumulated.concat(shape.getPoints().map(point => {
+            point.z = 0
+            return point
+          }))
+        }, [])
+
+        let curve = new THREE.CatmullRomCurve3(vertexes, true)
+
+        let points = curve.getPoints(3000)
+        let geometry = new THREE.BufferGeometry().setFromPoints(points)
+        let splineLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+          color: 'orange',
+          linewidth: 2
+        }))
 
         let text = new THREE.Mesh(textGeometry, orangeMaterial)
         text.name = row
+        text.add(splineLine)
 
         if (textSettings.showBoxes) {
           let bb = new THREE.BoxHelper(text)
           text.add(bb)
         }
 
-        text.position.set(0, -textSettings.line * i, 0)
-        texts.add(text)
+        textGeometry.computeBoundingBox()
+        let displacementX = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x)
+        let displacementY = -0.5 * (textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y)
 
+        texts.add(text)
+        text.position.set(displacementX, displacementY - textSettings.line * 1.1 * i, 0)
         texts.position.set(0, (rows.length - 1) * textSettings.line / 2, 0)
+
+        let cube = cubeHelper(curve.getPointAt(0), 20)
+        text.add(cube)
+        let mc = cubeHelper(new THREE.Vector3(-10, 12, 0), 5)
+        cube.add(mc)
+
+        window.c = new THREE.PerspectiveCamera(45, window.innerHeight/window.innerWidth, 0.1, 100)
+        // let c = camera
+        c.lookAt(new THREE.Vector3(0, 1, 0))
+
+        let ch = new THREE.CameraHelper(c)
+
+        cube.add(c)
+        c.position.set(-10, 10, 0)
+        scene.add(ch)
+
+        let axis = new THREE.Vector3()
+        let up = new THREE.Vector3(0, 1, 0)
+
+        let outLiner = new CallbackMixer(function (delta) {
+          cube.position.copy(curve.getPointAt(delta))
+          let tangent = curve.getTangentAt(delta).normalize()
+          axis.crossVectors(up, tangent).normalize()
+          let radians = Math.acos(up.dot(tangent))
+          cube.quaternion.setFromAxisAngle(axis, radians)
+
+          // cube.position.copy(curve.getPointAt(delta)).add(new THREE.Vector3(0, 10, 0))
+          // let x = curve.getPointAt((delta + 0.0001) % 1).add(new THREE.Vector3(0, 10, 0))
+          // cube.lookAt(x)
+        }, 50, Infinity)
+
+        mixers.push(outLiner)
       })
+
     }, 500)
 
     textArea.addEventListener('input', debouncedKeyDown, false)
@@ -401,9 +455,15 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
+let renderSettings = {
+  repeat: true
+}
+
 function render () {
   stats.begin()
-  requestAnimationFrame(render)
+  if (renderSettings.repeat)
+    requestAnimationFrame(render)
+
   let delta = clock.getDelta()
 
   mixers.forEach(mixer => mixer.update(delta))
@@ -411,12 +471,16 @@ function render () {
   // only needed for autoRotate or inertia
   // controls.update()
 
-  renderer.render(scene, camera)
+  // if (window.c)
+    renderer.render(scene, camera)
 
   // for "animated" material from render
   // renderer.render(scene, camera, wglrt)
 
   stats.end()
 }
+
+gui.add(renderSettings, 'repeat').name('render enabled')
+gui.add({render}, 'render').name('trigger render')
 
 render()
