@@ -567,6 +567,33 @@ function wasd () {
   gui.add({wasd(){
     document.body.focus()
   }}, 'wasd').name('recover focus')
+
+  let cameraSettings = {
+    firstPerson: false,
+    originalCameraPosition: {},
+    originalCameraRotation: {}
+  }
+
+  gui.add(cameraSettings, 'firstPerson').onChange(active => {
+    if (active) {
+      cameraSettings.originalCameraPosition = camera.position.clone()
+      cameraSettings.originalCameraRotation = camera.rotation.clone()
+      controls.reset()
+      controls.enabled = false
+
+      cube.add(camera)
+      camera.position.set(0, 0, 0)
+      camera.rotation.y = -Math.PI/2
+    }
+    else {
+      cube.remove(camera)
+      controls.enabled = true
+
+      camera.position.copy(cameraSettings.originalCameraPosition)
+      camera.rotation.copy(cameraSettings.originalCameraRotation)
+    }
+  })
+
 }
 
 gui.add({wasd}, 'wasd').onChange(function(){this.remove()})
