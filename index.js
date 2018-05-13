@@ -179,7 +179,56 @@ function rollerCoaster() {
   let cube = cubeHelper(curve.getPointAt(0))
   rollerCoaster.add(cube)
 
-  // let otherCube = cubeHelper(curve.getPointAt(0))
+  let phantomPathFactory = function (path, divertedPoints, diversion) {
+    console.log(path)
+
+    let phantomRailCurve = path.clone()
+    let phantomRailwayGeometry = new THREE.BufferGeometry().setFromPoints(phantomRailCurve.getPoints(3000))
+
+    let phantomSpline = new THREE.Line(phantomRailwayGeometry, new THREE.LineBasicMaterial({
+      color: 'green'
+    }))
+
+    let divertPhantomCurve = function (divertedPoints, diversion) {
+
+      phantomRailCurve.points = path.getPoints(divertedPoints).map(point => {
+        let offset = new THREE.Vector3(
+          random(-diversion, diversion),
+          random(-diversion, diversion),
+          random(-diversion, diversion)
+        )
+
+        return point.add(offset)
+      })
+
+      phantomRailwayGeometry.setFromPoints(phantomRailCurve.getPoints(3000))
+      phantomSpline.material.color.set(randUint24())
+    }
+
+    divertPhantomCurve(divertedPoints, diversion)
+
+    return {
+      phantomRailCurve,
+      phantomSpline,
+      divertPhantomCurve
+    }
+  }
+
+  let {phantomSpline, phantomRailCurve, divertPhantomCurve} = phantomPathFactory(curve, 20, 100)
+  phantomSpline.visible = false
+  rollerCoaster.add(phantomSpline)
+
+  let phantomHelper = cubeHelper(phantomRailCurve.getPointAt(0))
+  phantomHelper.visible = false
+  rollerCoaster.add(phantomHelper)
+
+  let phantomHelperMixer = new CallbackMixer(ratio => {
+    phantomHelper.position.copy(phantomRailCurve.getPointAt(ratio))
+  }, 30, Infinity)
+
+  mixers.push(phantomHelperMixer)
+
+  // let otherCube = cubeHelper(phantomRailCurve.getPointAt(0))
   // rollerCoaster.add(otherCube)
 
   let rollerCoasterSettings = {
@@ -187,7 +236,7 @@ function rollerCoaster() {
     timePerLoop: 30,
     enabled: true,
     cameraTracking: true,
-    applyTrackingOffset: 'matrix',
+    applyTrackingOffset: 'phantom',
     cameraLookAt: true
   }
 
@@ -218,7 +267,10 @@ function rollerCoaster() {
       offsettedPosition.copy(matrix.lerp(quaternion, 0.5))
     }
 
-    // otherCube.position.copy(offsettedPosition)
+    if (rollerCoasterSettings.applyTrackingOffset == 'phantom') {
+      offsettedPosition = phantomRailCurve.getPointAt(delta)
+    }
+
     camera.position.copy(offsettedPosition)
     controls.update()
   }
@@ -258,10 +310,12 @@ function rollerCoaster() {
 
   motionFolder.add(rollerCoasterSettings, 'timePerLoop', 0, 60, 0.5).onChange(value => {
     cubeMovementMixer.setDuration(value)
+    phantomHelperMixer.setDuration(value)
   })
 
   motionFolder.add(rollerCoasterSettings, 'enabled').onChange(() => {
     cubeMovementMixer.pause()
+    phantomHelperMixer.pause()
   })
 
   let cameraFolder = rollerCoasterFolder.addFolder('camera')
@@ -271,7 +325,24 @@ function rollerCoaster() {
   })
 
   cameraFolder.add(rollerCoasterSettings, 'cameraTracking')
-  cameraFolder.add(rollerCoasterSettings, 'applyTrackingOffset', ['none', 'matrix', 'quaternion', 'lerp'])
+  cameraFolder.add(rollerCoasterSettings, 'applyTrackingOffset', ['none', 'matrix', 'quaternion', 'lerp', 'phantom'])
+
+  let phantomSettings = {
+    divertedPoints: 20,
+    diversion: 100
+  }
+
+  let phantomFolder = cameraFolder.addFolder('phantom settings')
+
+  phantomFolder.add(phantomSpline, 'visible').name('railway')
+  phantomFolder.add(phantomHelper, 'visible').name('camera helper')
+
+  phantomFolder.add(phantomSettings, 'divertedPoints', 2, 200, 1).onChange(() => {
+    divertPhantomCurve(phantomSettings.divertedPoints, phantomSettings.diversion)
+  })
+  phantomFolder.add(phantomSettings, 'diversion', 2, 2000, 1).onChange(() => {
+    divertPhantomCurve(phantomSettings.divertedPoints, phantomSettings.diversion)
+  })
 
   let railwayFolder = rollerCoasterFolder.addFolder('railway')
   railwayFolder.add(railway.material, 'wireframe')
@@ -280,7 +351,6 @@ function rollerCoaster() {
   railwayFolder.addColor({color: railway.material.color.getHex()}, 'color').name('color').onChange(function(selectedColor) {
     railway.material.color = new THREE.Color(selectedColor)
   })
-
 
   mixers.push(cubeMovementMixer)
 
@@ -292,7 +362,6 @@ function rollerCoaster() {
 }
 
 gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
-
 
 // function experiments (geometry) {
 //   let originalPositions = geometry.attributes.normal.clone()
