@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "poi dev",
+    "start": "poi develop",
     "build": "poi build",
     "deploy": "./bin/deploy.sh three_experiments",
     "builddeploy": "npm run build && npm run deploy",
@@ -25,7 +25,7 @@
   "devDependencies": {
     "dat.gui": "^0.7.1",
     "lodash": "^4.17.5",
-    "poi": "^9.6.13",
+    "poi": "^10.1.5",
     "stats.js": "^0.17.0",
     "three": "^0.91.0",
     "three-orbitcontrols": "^2.0.0"

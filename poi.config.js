@@ -11,7 +11,7 @@
 // }
 
 module.exports = {
-  homepage: './',
+  publicPath: './',
   sourceMap: false,
   html: {
     template: './index.html'
