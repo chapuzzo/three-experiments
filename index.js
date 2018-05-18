@@ -17,7 +17,7 @@ let clock = new THREE.Clock()
 window.scene = new THREE.Scene()
 let mixers = []
 
-window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000)
+window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000000)
 camera.position.set(2500, 4100, 2300)
 
 window.renderer = new THREE.WebGLRenderer({antialias: true})
@@ -148,6 +148,40 @@ function randUint24 () {
   return Math.floor(0xffffff * Math.random())
 }
 
+let phantomPathFactory = function (path, divertedPoints, diversion) {
+  let phantomRailCurve = path.clone()
+  let phantomRailwayGeometry = new THREE.BufferGeometry().setFromPoints(phantomRailCurve.getPoints(3000))
+
+  let phantomSpline = new THREE.Line(phantomRailwayGeometry, new THREE.LineBasicMaterial({
+    color: 'green'
+  }))
+
+  let divertPhantomCurve = function (divertedPoints, diversion, randomColor = true) {
+    if (randomColor)
+      phantomSpline.material.color.set(randUint24())
+
+    phantomRailCurve.points = path.getPoints(divertedPoints).map(point => {
+      let offset = new THREE.Vector3(
+        random(-diversion, diversion),
+        random(-diversion, diversion),
+        random(-diversion, diversion)
+      )
+
+      return point.add(offset)
+    })
+
+    phantomRailwayGeometry.setFromPoints(phantomRailCurve.getPoints(3000))
+  }
+
+  divertPhantomCurve(divertedPoints, diversion)
+
+  return {
+    phantomRailCurve,
+    phantomSpline,
+    divertPhantomCurve
+  }
+}
+
 function rollerCoaster() {
 
   let rollerCoaster = new THREE.Group()
@@ -178,41 +212,6 @@ function rollerCoaster() {
 
   let cube = cubeHelper(curve.getPointAt(0))
   rollerCoaster.add(cube)
-
-  let phantomPathFactory = function (path, divertedPoints, diversion) {
-    console.log(path)
-
-    let phantomRailCurve = path.clone()
-    let phantomRailwayGeometry = new THREE.BufferGeometry().setFromPoints(phantomRailCurve.getPoints(3000))
-
-    let phantomSpline = new THREE.Line(phantomRailwayGeometry, new THREE.LineBasicMaterial({
-      color: 'green'
-    }))
-
-    let divertPhantomCurve = function (divertedPoints, diversion) {
-
-      phantomRailCurve.points = path.getPoints(divertedPoints).map(point => {
-        let offset = new THREE.Vector3(
-          random(-diversion, diversion),
-          random(-diversion, diversion),
-          random(-diversion, diversion)
-        )
-
-        return point.add(offset)
-      })
-
-      phantomRailwayGeometry.setFromPoints(phantomRailCurve.getPoints(3000))
-      phantomSpline.material.color.set(randUint24())
-    }
-
-    divertPhantomCurve(divertedPoints, diversion)
-
-    return {
-      phantomRailCurve,
-      phantomSpline,
-      divertPhantomCurve
-    }
-  }
 
   let {phantomSpline, phantomRailCurve, divertPhantomCurve} = phantomPathFactory(curve, 20, 100)
   phantomSpline.visible = false
@@ -362,6 +361,141 @@ function rollerCoaster() {
 }
 
 gui.add({rollerCoaster}, 'rollerCoaster').onChange(function(){this.remove()})
+
+function zap() {
+  let listener = new THREE.AudioListener()
+  camera.add(listener)
+
+  let sound = new THREE.Audio(listener)
+  let audioLoader = new THREE.AudioLoader()
+  let analyser = new THREE.AudioAnalyser(sound, 32)
+
+  let vertexes = new Array(10).fill().map(() => {
+    return new THREE.Vector3(
+      random(-500, 500),
+      random(0, 1000),
+      random(-500, 500)
+    )
+  })
+
+  let curve = new THREE.CatmullRomCurve3(vertexes, false)
+  let wireGeometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(300))
+  let wire = new THREE.Line(wireGeometry, new THREE.LineBasicMaterial())
+  // wire.visible = false
+  scene.add(wire)
+
+  let {phantomSpline, divertPhantomCurve} = phantomPathFactory(curve, 10, 0)
+  scene.add(phantomSpline)
+
+  let length = Math.floor(analyser.analyser.fftSize/2)
+  console.log({length})
+  const ctx = listener.context
+
+  // let g = ctx.createOscillator()
+  // g.type = 'sine'
+
+  // let s = new THREE.Audio(listener)
+  // s.setNodeSource(g)
+  // s.setVolume(0.3)
+
+  // let size = 4
+  // let generators = new Array(4).fill().map((_, i) => {
+  //   let oscillator = ctx.createOscillator()
+  //   oscillator.type = 'sine'
+  //   let freq = (i+1) * ctx.sampleRate / analyser.analyser.frequencyBinCount
+  //   console.log({freq, i})
+  //   oscillator.frequency.value = freq
+  //   oscillator.start()
+  //   let sound = new THREE.Audio(listener)
+  //   sound.setNodeSource(oscillator)
+  //   sound.setVolume(0)
+
+  //   console.log(sound)
+  //   return {
+  //     oscillator,
+  //     sound
+  //   }
+  // })
+
+  let analyserMixer = new CallbackMixer(ratio => {
+    let avgFreq = analyser.getAverageFrequency()
+    let freqData = analyser.getFrequencyData()
+
+    if (avgFreq == 0)
+      phantomSpline.visible = false
+    else {
+      phantomSpline.visible = true
+
+      // let max = Math.abs(analyser.analyser.maxDecibels)
+      // let min = Math.abs(analyser.analyser.minDecibels)
+      // let range = Math.abs(max - min)
+      // let lnMax = Math.log2(max)
+
+      // console.log({
+      //   max,
+      //   min,
+      //   range,
+      //   lnMax
+      // })
+
+      // g.frequency.value = avgFreq
+
+      // generators.forEach((generator, index) => {
+
+      //   let freqIndex = Math.floor(index)
+      //   let freqVolume = freqData[index] / 300
+
+      //   generator.sound.setVolume(freqVolume)
+      // })
+
+      // freqData.forEach((volume, i) => {
+      //   generators[i].oscillator.frequency.value = volume
+      // })
+
+      // curve.points = Array.from(freqData).map((value, idx, arr) => {
+      //   return new THREE.Vector3(
+      //     idx * 10,
+      //     value,
+      //     0
+      //     // arr.slice(-(1 + idx))[0]
+      //   )
+      // })
+      // wireGeometry.setFromPoints(curve.getPoints(30000))
+
+      // divertPhantomCurve(freqData[0], freqData[1]/2)
+      divertPhantomCurve(avgFreq, avgFreq/2)
+    }
+
+  }, 1000, 1)
+  // mixers.push(analyserMixer)
+
+  audioLoader.load('./assets/sounds/zap.wav', buffer => {
+    // return
+    console.debug('loaded')
+    sound.setBuffer(buffer)
+    sound.setVolume(0.5)
+    // sound.setPlaybackRate(0.5)
+    sound.setLoop(false)
+    sound.play()
+    // g.start()
+    mixers.push(analyserMixer)
+
+    gui.add(sound, 'play')
+    gui.add(sound, 'pause')
+    gui.add(sound, 'stop')
+  },
+  progress => {
+    console.debug('progress')
+  },
+  error => {
+    console.debug('error')
+    console.error(error)
+  })
+
+  // console.log(analyser.data)
+}
+
+gui.add({zap}, 'zap').name('audio').onChange(function(){this.remove()})
 
 // function experiments (geometry) {
 //   let originalPositions = geometry.attributes.normal.clone()
