@@ -15,10 +15,11 @@ document.body.appendChild(stats.dom)
 let clock = new THREE.Clock()
 
 window.scene = new THREE.Scene()
+scene.background = new THREE.Color( 0xcecece );
 let mixers = []
 
 window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000)
-camera.position.set(2500, 4100, 2300)
+camera.position.set(1000, 1000, 1000)
 
 window.renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -29,6 +30,18 @@ document.body.style.margin = 0
 let gridsPosition = new THREE.Vector3(0, -100, 0)
 let grids = createGrids(2000, 20, gridsPosition)
 scene.add(grids)
+
+let textGrass = new THREE.TextureLoader().load( 'img/grass.png' );
+textGrass.wrapS = THREE.RepeatWrapping;
+textGrass.wrapT = THREE.RepeatWrapping;
+textGrass.repeat.set( 12, 12 );
+let matGrass = new THREE.MeshBasicMaterial( { map: textGrass} );
+
+let FloorGeo = new THREE.PlaneGeometry(1000, 1000);
+let Floor = new THREE.Mesh(FloorGeo, matGrass);
+scene.add(Floor);
+Floor.rotation.x = -90 * Math.PI/180
+
 
 window.controls = new OrbitControls(camera, renderer.domElement)
 controls.target.set(-200, 0, -200)
