@@ -9,7 +9,8 @@
     "build": "poi build",
     "deploy": "./bin/deploy.sh three_experiments",
     "builddeploy": "npm run build && npm run deploy",
-    "deployto": "./bin/deploy.sh"
+    "deployto": "./bin/deploy.sh",
+    "autodeploy": "./bin/autodeploy.sh"
   },
   "author": "chapuzzo",
   "license": "ISC",
