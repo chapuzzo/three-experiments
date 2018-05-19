@@ -6,7 +6,7 @@ import cubeHelper from './cubeHelper'
 import createGrids from './createGrids'
 import CallbackMixer from './CallbackMixer'
 import bufferGeometryMerger from './bufferGeometryMerger'
-import {debounce, random, times, remove} from 'lodash'
+import {debounce, throttle, random, times, remove} from 'lodash'
 
 window.THREE = THREE
 window.gui = new dat.GUI({closeOnTop: true, hideable: false, width: 350})
@@ -539,6 +539,103 @@ function wasd () {
     })
   }
 
+  let floorTiles = {}
+  const probes = new THREE.Group()
+  scene.add(probes)
+  const tiles = new THREE.Group()
+  scene.add(tiles)
+
+  let floorSettings = {
+    drawProbes: true,
+    tileSize: 500
+  }
+
+  gui.add(floorSettings, 'drawProbes').onChange(() => {clearChildren(probes)})
+  gui.add(floorSettings, 'tileSize', 100, 2000, 10).onChange(() => {
+    clearChildren(tiles)
+    floorTiles = {}
+  })
+
+  function discretizePosition ({x, z}) {
+    return {
+      x: Math.floor(x / floorSettings.tileSize),
+      z: Math.floor(z / floorSettings.tileSize),
+      y: 0
+    }
+  }
+
+  function tilePosition ({x, z}) {
+    const offset = new THREE.Vector3(floorSettings.tileSize/2, 0, floorSettings.tileSize/2)
+
+    return offset.add({
+      x: x * floorSettings.tileSize,
+      z: z * floorSettings.tileSize,
+      y: -25
+    })
+  }
+
+  function tileId (coords) {
+    let {x, z} = discretizePosition(coords)
+
+    return `${x}-${z}`
+  }
+
+  function generateTile (coords) {
+    let tileGeometry = new THREE.PlaneBufferGeometry(floorSettings.tileSize, floorSettings.tileSize)
+    let tile = new THREE.Mesh(tileGeometry, new THREE.MeshStandardMaterial({
+      color: randUint24(),
+      side: THREE.DoubleSide
+    }))
+
+    tile.rotation.x = Math.PI/2
+
+    tile.position.copy(tilePosition(discretizePosition(coords)))
+
+    return tile
+  }
+
+  function checkFloor (coords) {
+    return floorTiles[tileId(coords)]
+  }
+
+  function addTile (coords) {
+    let tile = generateTile(coords)
+
+    floorTiles[tileId(coords)] = true
+    tiles.add(tile)
+  }
+
+  function ensureFloorAhead (distance) {
+    let aheadPosition = new THREE.Vector3(1, 0, 0).multiplyScalar(distance)
+
+    let slices = 16
+    times(slices, (i) => {
+      let thisAngle = (Math.PI * 2) / slices * i
+
+      let thisAngleAheadPosition = aheadPosition.clone()
+      thisAngleAheadPosition.applyAxisAngle({x:0, y:1, z:0}, thisAngle)
+
+      let probePosition = thisAngleAheadPosition.add(cube.position)
+
+      if (!checkFloor(probePosition)){
+        addTile(probePosition)
+      }
+
+      if (floorSettings.drawProbes) {
+        let probe = cubeHelper(probePosition, 5)
+        probes.add(probe)
+      }
+    })
+  }
+
+  let ensureFloorMixer = new CallbackMixer(throttle((ratio) => {
+    if (floorSettings.drawProbes) {
+      clearChildren(probes)
+    }
+    times(2, (i) => ensureFloorAhead(floorSettings.tileSize * (i + 2) * 0.6) )
+  }, 200), 1, Infinity)
+  mixers.push(ensureFloorMixer)
+
   function keydown(event){
     if (event.target.nodeName !== 'BODY')
       return
@@ -597,6 +694,7 @@ function wasd () {
 }
 
 gui.add({wasd}, 'wasd').onChange(function(){this.remove()})
+setTimeout(wasd, 100)
 
 function texts(){
   let textArea = document.createElement('textarea')
