@@ -15,10 +15,11 @@ document.body.appendChild(stats.dom)
 let clock = new THREE.Clock()
 
 window.scene = new THREE.Scene()
+scene.background = new THREE.Color( 0x000000);
 let mixers = []
 
-window.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000)
-camera.position.set(2500, 4100, 2300)
+window.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000)
+camera.position.set(1000, 1000, 1000)
 
 window.renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -30,17 +31,45 @@ let gridsPosition = new THREE.Vector3(0, -100, 0)
 let grids = createGrids(2000, 20, gridsPosition)
 scene.add(grids)
 
+let textGrass = new THREE.TextureLoader().load( 'assets/img/grass.jpg' );
+textGrass.wrapS = THREE.RepeatWrapping;
+textGrass.wrapT = THREE.RepeatWrapping;
+textGrass.repeat.set( 200, 200 );
+let matGrass = new THREE.MeshPhongMaterial( { map: textGrass} );
+
+let FloorGeo = new THREE.PlaneGeometry(10000, 10000);
+let Floor = new THREE.Mesh(FloorGeo, matGrass);
+scene.add(Floor);
+Floor.rotation.x = -90 * Math.PI/180
+Floor.position.y = 0;
+
+var spriteMap = new THREE.TextureLoader().load( "assets/img/treeOne.png" );
+var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, transparent: false} );
+var sprite = new THREE.Sprite( spriteMaterial );
+scene.add( sprite );
+sprite.position.set(0,250,0)
+sprite.scale.set(700,700,700)
+
+var geometry = new THREE.BoxGeometry( 100, 100, 100 );
+var material = new THREE.MeshPhongMaterial( {color: 0x00ff00} );
+var cube = new THREE.Mesh( geometry, material );
+//scene.add( cube );
+
+var light = new THREE.AmbientLight( 0x404040, 0.7); // soft white light
+scene.add( light );
+
+
 window.controls = new OrbitControls(camera, renderer.domElement)
 controls.target.set(-200, 0, -200)
 controls.enableKeys = false
 controls.autoUpdate = false
 
-let light = new THREE.HemisphereLight('white', 'black', 2)
-scene.add(light)
+//let light = new THREE.HemisphereLight('white', 'black', 2)
+//scene.add(light)
 
 let pointLight = new THREE.PointLight('red', 50, 10000)
 pointLight.castShadow = true
-scene.add(pointLight)
+//scene.add(pointLight)
 
 // let lightHelper = new THREE.PointLightHelper(pointLight)
 // scene.add(lightHelper)

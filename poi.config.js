@@ -12,7 +12,7 @@
 
 module.exports = {
   publicPath: './',
-  sourceMap: false,
+  //sourceMap: false,
   html: {
     template: './index.html'
   }
