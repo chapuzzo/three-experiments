@@ -7,6 +7,7 @@ import createGrids from './createGrids'
 import CallbackMixer from './CallbackMixer'
 import bufferGeometryMerger from './bufferGeometryMerger'
 import {debounce, random, times} from 'lodash'
+import splines from './splines'
 
 window.THREE = THREE
 window.gui = new dat.GUI({closeOnTop: true, hideable: false, width: 350})
@@ -26,7 +27,7 @@ renderer.shadowMap.enabled = true
 document.body.appendChild(renderer.domElement)
 document.body.style.margin = 0
 
-let gridsPosition = new THREE.Vector3(0, -100, 0)
+let gridsPosition = new THREE.Vector3(0, 0, 0)
 let grids = createGrids(2000, 20, gridsPosition)
 scene.add(grids)
 
@@ -62,6 +63,9 @@ scene.add(objects)
 let orangeMaterial = new THREE.MeshStandardMaterial({color: 'orange'/*, opacity: 0.9, transparent: true*/})
 let greenMaterial = new THREE.MeshStandardMaterial({color: 'green'/*, opacity: 0.9, transparent: true*/})
 
+
+window.splines = splines
+splines(scene, 50)
 
 function geometries () {
   let sphereGeometry = new THREE.SphereGeometry(50, 16, 16)
